@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.app import crud, schemas
 from src.app.db.session import get_db
+from arq import create_pool
+from arq.connections import RedisSettings
 
 router = APIRouter()
 
@@ -52,6 +54,24 @@ async def update_carrier(
     if not carrier:
         raise HTTPException(status_code=404, detail="Carrier not found")
     return carrier
+
+
+@router.patch("/{id}/balance", response_model=schemas.Carrier)
+async def update_carrier_balance(
+    id: int,
+    balance: float,
+    db: AsyncSession = Depends(get_db)
+):
+    carrier = await crud.carrier.get(db, id=id)
+    if not carrier:
+        raise HTTPException(status_code=404, detail="Carrier not found")
+
+    redis = await create_pool(RedisSettings(host='localhost', port=6379))
+    await redis.enqueue_job('process_carrier_balance_update', id, balance)
+
+    carrier_update = schemas.CarrierUpdate(balance=balance)
+    updated = await crud.carrier.update(db, id=id, obj_in=carrier_update)
+    return updated
 
 
 @router.delete("/{id}", status_code=204)

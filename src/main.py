@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from src.app.core.config import settings
-from src.app.api.endpoints import carriers
+from src.app.api.v1.endpoints import carriers
 
 app = FastAPI(title=settings.PROJECT_NAME)
-app.include_router(carriers.router, prefix=f"{settings.API_V1_STR}/carriers", tags=["carriers"])
+app.include_router(carriers.router, prefix=f"{settings.API_V1_PREFIX}/carriers", tags=["carriers"])
 
 
 @app.get("/health")
