@@ -42,6 +42,7 @@ class CRUDCarrier:
         for field, value in update_data.items():
             setattr(db_obj, field, value)
 
+        db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
         return db_obj

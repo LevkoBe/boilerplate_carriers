@@ -5,6 +5,7 @@ from src.app import crud, schemas
 from src.app.db.session import get_db
 from arq import create_pool
 from arq.connections import RedisSettings
+from src.app.models.carrier import Carrier
 
 router = APIRouter()
 
@@ -91,19 +92,29 @@ async def create_carriers_batch(
     db: AsyncSession = Depends(get_db)
 ):
     created_carriers = []
-    try:
-        for carrier_in in carriers_in:
-            existing = await crud.carrier.get_by_account(db, carrier_in.account_number)
-            if existing:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Duplicate account: {carrier_in.account_number}"
-                )
-            carrier = await crud.carrier.create(db, carrier_in)
-            created_carriers.append(carrier)
 
-        await db.commit()
-        return created_carriers
-    except Exception as e:
-        await db.rollback()
-        raise e
+    for carrier_in in carriers_in:
+        existing = await crud.carrier.get_by_account(db, carrier_in.account_number)
+        if existing:
+            await db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Duplicate account: {carrier_in.account_number}"
+            )
+
+        db_obj = Carrier(
+            carrier_code=carrier_in.carrier_code,
+            friendly_name=carrier_in.friendly_name,
+            account_number=carrier_in.account_number,
+            requires_funded_amount=carrier_in.requires_funded_amount,
+            balance=carrier_in.balance
+        )
+        db.add(db_obj)
+        created_carriers.append(db_obj)
+
+    await db.commit()
+
+    for carrier in created_carriers:
+        await db.refresh(carrier)
+
+    return created_carriers
