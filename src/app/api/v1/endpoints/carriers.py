@@ -83,3 +83,27 @@ async def delete_carrier(
     if not carrier:
         raise HTTPException(status_code=404, detail="Carrier not found")
     return None
+
+
+@router.post("/batch", response_model=List[schemas.Carrier], status_code=201)
+async def create_carriers_batch(
+    carriers_in: List[schemas.CarrierCreate],
+    db: AsyncSession = Depends(get_db)
+):
+    created_carriers = []
+    try:
+        for carrier_in in carriers_in:
+            existing = await crud.carrier.get_by_account(db, carrier_in.account_number)
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Duplicate account: {carrier_in.account_number}"
+                )
+            carrier = await crud.carrier.create(db, carrier_in)
+            created_carriers.append(carrier)
+
+        await db.commit()
+        return created_carriers
+    except Exception as e:
+        await db.rollback()
+        raise e
