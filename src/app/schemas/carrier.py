@@ -14,11 +14,14 @@ class CarrierCreate(CarrierBase):
     pass
 
 
-class CarrierUpdate(CarrierBase):
-    pass
+class CarrierUpdate(BaseModel):
+    carrier_code: Optional[str] = None
+    friendly_name: Optional[str] = None
+    account_number: Optional[str] = None
+    requires_funded_amount: Optional[bool] = None
+    balance: Optional[float] = None
 
 
 class Carrier(CarrierBase):
     id: int
-
     model_config = ConfigDict(from_attributes=True)
